@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>TTS APP</title>
+</head>
+
+<body>
+
+<h2>🎤 Text to Speech</h2>
+
+<form id="form">
+
+<textarea name="text" required></textarea><br>
+
+<select name="voice">
+    <option value="vi-VN-HoaiMyNeural">Nữ</option>
+    <option value="vi-VN-NamMinhNeural">Nam</option>
+</select><br>
+
+<input type="range" name="rate" min="-50" max="50" value="0">
+
+<br>
+
+<button type="submit">Tạo giọng nói</button>
+
+</form>
+
+<audio id="audio" controls></audio>
+
+<a id="download">Download</a>
+
+<script>
+document.getElementById("form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    let formData = new FormData(e.target);
+
+    let res = await fetch("/tts", {
+        method: "POST",
+        body: formData
+    });
+
+    let data = await res.json();
+
+    let file = data.audio.split("/").pop();
+
+    document.getElementById("audio").src = data.audio;
+    document.getElementById("audio").play();
+
+    document.getElementById("download").href = "/download/" + file;
+});
+</script>
+
+</body>
+</html>
