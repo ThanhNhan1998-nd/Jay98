@@ -1,54 +1,173 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
-<title>TTS APP</title>
+<meta charset="UTF-8">
+<title>TTS ULTRA STABLE</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial;
+    background: #0a0f1c;
+    color: white;
+}
+
+.container {
+    width: 60%;
+    margin: auto;
+    margin-top: 50px;
+    background: #111827;
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.4);
+}
+
+h2 {
+    text-align: center;
+}
+
+textarea {
+    width: 100%;
+    height: 140px;
+    border-radius: 10px;
+    padding: 12px;
+    border: none;
+    outline: none;
+    font-size: 14px;
+}
+
+select, input, button {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    width: 100%;
+}
+
+button {
+    background: linear-gradient(90deg,#22c55e,#06b6d4);
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+audio {
+    width: 100%;
+    margin-top: 15px;
+}
+
+#loading {
+    display: none;
+    color: #38bdf8;
+    margin-top: 10px;
+    text-align: center;
+}
+
+#download {
+    display: none;
+    margin-top: 10px;
+    text-align: center;
+    color: #22c55e;
+    cursor: pointer;
+}
+
+#error {
+    color: red;
+    margin-top: 10px;
+    text-align: center;
+}
+
+label {
+    margin-top: 10px;
+    display: block;
+    color: #94a3b8;
+}
+</style>
+
 </head>
 
 <body>
 
-<h2>🎤 Text to Speech</h2>
+<div class="container">
 
-<form id="form">
+<h2>🚀 TTS ULTRA STABLE</h2>
 
-<textarea name="text" required></textarea><br>
+<form id="ttsForm">
 
+<textarea name="text" placeholder="Nhập nội dung cần chuyển thành giọng nói..." required></textarea>
+
+<label>Chọn giọng:</label>
 <select name="voice">
-    <option value="vi-VN-HoaiMyNeural">Nữ</option>
-    <option value="vi-VN-NamMinhNeural">Nam</option>
-</select><br>
+    <option value="vi-VN-HoaiMyNeural">Nữ miền Bắc</option>
+    <option value="vi-VN-NamMinhNeural">Nam miền Bắc</option>
+</select>
 
-<input type="range" name="rate" min="-50" max="50" value="0">
+<label>Tốc độ (-50 đến 50)</label>
+<input type="range" name="rate" min="-50" max="50" value="0"
+       oninput="rateValue.innerText=this.value + '%'">
+<span id="rateValue">0%</span>
 
-<br>
-
-<button type="submit">Tạo giọng nói</button>
+<button type="submit">🎤 Tạo giọng nói</button>
 
 </form>
 
+<div id="loading">⏳ Đang xử lý AI...</div>
+<div id="error"></div>
+
 <audio id="audio" controls></audio>
 
-<a id="download">Download</a>
+<a id="download">⬇️ Tải file MP3</a>
+
+</div>
 
 <script>
-document.getElementById("form").addEventListener("submit", async (e) => {
+
+const form = document.getElementById("ttsForm");
+const loading = document.getElementById("loading");
+const errorBox = document.getElementById("error");
+const audio = document.getElementById("audio");
+const download = document.getElementById("download");
+
+form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    let formData = new FormData(e.target);
+    loading.style.display = "block";
+    errorBox.innerText = "";
+    download.style.display = "none";
 
-    let res = await fetch("/tts", {
-        method: "POST",
-        body: formData
-    });
+    let formData = new FormData(form);
 
-    let data = await res.json();
+    try {
+        let res = await fetch("/tts", {
+            method: "POST",
+            body: formData
+        });
 
-    let file = data.audio.split("/").pop();
+        let data = await res.json();
 
-    document.getElementById("audio").src = data.audio;
-    document.getElementById("audio").play();
+        if (!res.ok) {
+            throw new Error(data.error || "Server error");
+        }
 
-    document.getElementById("download").href = "/download/" + file;
+        audio.src = data.audio;
+        audio.play();
+
+        let file = data.file;
+
+        download.href = "/download/" + file;
+        download.style.display = "block";
+
+    } catch (err) {
+        errorBox.innerText = "❌ " + err.message;
+    }
+
+    loading.style.display = "none";
 });
+
 </script>
 
 </body>

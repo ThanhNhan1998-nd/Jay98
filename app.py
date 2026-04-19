@@ -1,54 +1,82 @@
 from flask import Flask, render_template, request, send_file, jsonify
 import edge_tts
-import asyncio
 import os
 import uuid
+import asyncio
 
 app = Flask(__name__)
 
-OUTPUT_DIR = "/tmp/audio"
+# Render safe folder
+OUTPUT_DIR = "/tmp/tts_audio"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
-async def tts_generate(text, voice, rate, path):
-    communicate = edge_tts.Communicate(
-        text=text,
-        voice=voice,
-        rate=f"{rate}%"
-    )
-    await communicate.save(path)
-
-
+# =========================
+# HOME
+# =========================
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
+# =========================
+# TTS STABLE ENGINE
+# =========================
 @app.route("/tts", methods=["POST"])
 def tts():
-    text = request.form.get("text", "")
-    voice = request.form.get("voice", "vi-VN-HoaiMyNeural")
-    rate = request.form.get("rate", "0")
+    try:
+        text = request.form.get("text", "").strip()
+        voice = request.form.get("voice", "vi-VN-HoaiMyNeural")
+        rate = request.form.get("rate", "0")
 
-    filename = f"{uuid.uuid4()}.mp3"
-    filepath = os.path.join(OUTPUT_DIR, filename)
+        if not text:
+            return jsonify({"error": "No text"}), 400
 
-    asyncio.run(tts_generate(text, voice, rate, filepath))
+        file_id = str(uuid.uuid4())
+        filename = file_id + ".mp3"
+        filepath = os.path.join(OUTPUT_DIR, filename)
 
-    return jsonify({
-        "audio": f"/audio/{filename}"
-    })
+        # SAFE async wrapper (fix Render crash)
+        async def run_tts():
+            communicate = edge_tts.Communicate(
+                text=text,
+                voice=voice,
+                rate=f"{rate}%"
+            )
+            await communicate.save(filepath)
+
+        asyncio.run(run_tts())
+
+        return jsonify({
+            "audio": f"/audio/{filename}",
+            "file": filename
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
+# =========================
+# AUDIO
+# =========================
 @app.route("/audio/<filename>")
 def audio(filename):
-    return send_file(os.path.join(OUTPUT_DIR, filename), mimetype="audio/mpeg")
+    path = os.path.join(OUTPUT_DIR, filename)
+    return send_file(path, mimetype="audio/mpeg")
 
 
+# =========================
+# DOWNLOAD
+# =========================
 @app.route("/download/<filename>")
 def download(filename):
-    return send_file(os.path.join(OUTPUT_DIR, filename), as_attachment=True)
+    path = os.path.join(OUTPUT_DIR, filename)
+    return send_file(path, as_attachment=True)
 
 
+# =========================
+# RUN SERVER
+# =========================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
